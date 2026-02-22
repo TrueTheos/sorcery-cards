@@ -38,3 +38,9 @@ next-env.d.ts
 ## Panda
 styled-system
 styled-system-studio
+
+# raw card images
+/raw/*
+!/raw/missing/
+/raw/missing/*
+!/raw/missing/.gitkeep
