@@ -37,7 +37,7 @@ export default function Home({ cards }: { cards: Card[] }) {
   }, [cards, query, typeFilter]);
 
   function copyUrl(slug: string) {
-    const url = `https://cards.spells.bar/cards/${slug}.webp`;
+    const url = `${window.location.origin}/cards/${slug}.webp`;
     navigator.clipboard.writeText(url);
     setCopiedSlug(slug);
     setTimeout(() => setCopiedSlug(null), 1500);
@@ -75,13 +75,13 @@ export default function Home({ cards }: { cards: Card[] }) {
           <div style={styles.codeBlockWrap}>
             <pre style={styles.codeBlock}>
               {`# Full quality (q90)
-https://cards.spells.bar/cards/{slug}.webp
+/cards/{slug}.webp
 
 # Thumbnail (q10)
-https://cards.spells.bar/cards/10/{slug}.webp
+/cards/10/{slug}.webp
 
 # Blur placeholder / LQIP (q3, 64px wide)
-https://cards.spells.bar/cards/3/{slug}.webp`}
+/cards/3/{slug}.webp`}
             </pre>
           </div>
           <p style={styles.docsText}>
