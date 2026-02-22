@@ -12,6 +12,110 @@ export const getStaticProps: GetStaticProps = async () => {
   return { props: { cards } };
 };
 
+function BlurImage({
+  slug,
+  alt,
+  delay = 0,
+}: {
+  slug: string;
+  alt: string;
+  delay?: number;
+}) {
+  const [loaded, setLoaded] = useState(false);
+  const [showFull, setShowFull] = useState(delay === 0);
+
+  return (
+    <div
+      style={styles.blurWrap}
+      ref={(el) => {
+        if (el && delay > 0 && !showFull) {
+          setTimeout(() => setShowFull(true), delay);
+        }
+      }}
+    >
+      {/* Blur placeholder - always present, fades out */}
+      <img
+        src={`/cards/3/${slug}.webp`}
+        alt=""
+        aria-hidden
+        style={{
+          ...styles.blurImg,
+          filter: "blur(8px)",
+          transform: "scale(1.1)",
+          opacity: loaded ? 0 : 1,
+        }}
+      />
+      {/* Full image - delayed to show the blur effect in demo */}
+      {showFull && (
+        <img
+          src={`/cards/${slug}.webp`}
+          alt={alt}
+          onLoad={() => setLoaded(true)}
+          style={{
+            ...styles.blurImg,
+            opacity: loaded ? 1 : 0,
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+const DEMO_SLUGS = ["abundance", "accursed_tower", "acid_rain"];
+
+function BlurDemo() {
+  const [key, setKey] = useState(0);
+
+  return (
+    <div style={styles.blurDemo}>
+      <div style={styles.blurDemoCards}>
+        {DEMO_SLUGS.map((slug, i) => (
+          <BlurImage key={`${slug}-${key}`} slug={slug} alt={slug} delay={i * 600 + 500} />
+        ))}
+      </div>
+      <button
+        onClick={() => setKey((k) => k + 1)}
+        style={styles.replayBtn}
+      >
+        Replay
+      </button>
+    </div>
+  );
+}
+
+const BLUR_CODE = `function BlurImage({ slug, alt }) {
+  const [loaded, setLoaded] = useState(false);
+
+  return (
+    <div style={{ position: "relative", aspectRatio: "5/7" }}>
+      {/* Blur placeholder */}
+      <img
+        src={\`/cards/3/\${slug}.webp\`}
+        style={{
+          position: "absolute", inset: 0,
+          width: "100%", height: "100%",
+          objectFit: "cover", filter: "blur(8px)",
+          transition: "opacity 0.4s",
+          opacity: loaded ? 0 : 1,
+        }}
+      />
+      {/* Full quality */}
+      <img
+        src={\`/cards/\${slug}.webp\`}
+        alt={alt}
+        onLoad={() => setLoaded(true)}
+        style={{
+          position: "absolute", inset: 0,
+          width: "100%", height: "100%",
+          objectFit: "cover",
+          transition: "opacity 0.4s",
+          opacity: loaded ? 1 : 0,
+        }}
+      />
+    </div>
+  );
+}`;
+
 const TYPES = [
   "all",
   "minion",
@@ -108,6 +212,22 @@ export default function Home({ cards }: { cards: Card[] }) {
               </div>
             ))}
           </div>
+          {/* Progressive Blur Loading */}
+          <h2 style={{ ...styles.docsTitle, marginTop: "1.25rem" }}>
+            Progressive Blur Loading
+          </h2>
+          <p style={styles.docsText}>
+            Use the <code style={styles.inlineCode}>/cards/3/</code> LQIP
+            images as blur placeholders that fade into the full image once
+            loaded. The tiny placeholder (~1-2KB) loads instantly while the full
+            image streams in behind it.
+          </p>
+          <BlurDemo />
+          <p style={styles.docsText}>React example:</p>
+          <div style={styles.codeBlockWrap}>
+            <pre style={styles.codeBlock}>{BLUR_CODE}</pre>
+          </div>
+
           <p style={styles.docsText}>
             Full card list:{" "}
             <a href="/processed_cards.json" style={styles.link}>
@@ -157,6 +277,11 @@ export default function Home({ cards }: { cards: Card[] }) {
                 alt={card.name}
                 style={styles.cardImg}
                 loading="lazy"
+                onError={(e) => {
+                  const img = e.currentTarget;
+                  if (!img.src.includes("/cards/10/")) return;
+                  img.src = `/cards/${card.slug}.webp`;
+                }}
               />
               <div style={styles.cardInfo}>
                 <span style={styles.cardName}>{card.name}</span>
@@ -270,6 +395,51 @@ const styles: Record<string, React.CSSProperties> = {
   exampleLabel: {
     color: "#7cacf8",
     fontWeight: 600,
+  },
+
+  // Blur demo
+  inlineCode: {
+    background: "#0d0d0d",
+    border: "1px solid #333",
+    borderRadius: 3,
+    padding: "0.1rem 0.35rem",
+    fontSize: "0.8rem",
+    color: "#c8d6e5",
+  },
+  blurDemo: {
+    margin: "0.75rem 0",
+  },
+  blurDemoCards: {
+    display: "flex",
+    gap: "0.75rem",
+    flexWrap: "wrap" as const,
+  },
+  blurWrap: {
+    position: "relative" as const,
+    width: 140,
+    aspectRatio: "5 / 7",
+    borderRadius: 4,
+    overflow: "hidden",
+    background: "#222",
+  },
+  blurImg: {
+    position: "absolute" as const,
+    inset: 0,
+    width: "100%",
+    height: "100%",
+    objectFit: "cover" as const,
+    filter: undefined as string | undefined,
+    transition: "opacity 0.4s ease",
+  },
+  replayBtn: {
+    marginTop: "0.5rem",
+    padding: "0.3rem 0.75rem",
+    fontSize: "0.8rem",
+    border: "1px solid #333",
+    borderRadius: 4,
+    background: "#1a1a1a",
+    color: "#888",
+    cursor: "pointer",
   },
 
   // Controls
