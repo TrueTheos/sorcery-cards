@@ -6,8 +6,11 @@
 #
 # Quality 3 images are resized to 64px wide (blur placeholders / LQIP).
 
-input_folder="../raw/missing"
-mkdir -p ../public/cards/10 ../public/cards/3
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+input_folder="$ROOT_DIR/raw/missing"
+mkdir -p "$ROOT_DIR/public/cards/10" "$ROOT_DIR/public/cards/3"
 
 total=$(find "$input_folder" -maxdepth 1 -type f -iname "*.png" | wc -l)
 counter=0
@@ -26,9 +29,9 @@ find "$input_folder" -maxdepth 1 -type f -iname "*.png" | while read -r f; do
   renamed="${stripped//-/_}"
 
   echo "[$counter/$total] $base -> $renamed.webp"
-  magick "$f" -quality 90 "../public/cards/${renamed}.webp"
-  magick "$f" -quality 10 "../public/cards/10/${renamed}.webp"
-  magick "$f" -resize 64x -quality 3 "../public/cards/3/${renamed}.webp"
+  magick "$f" -quality 90 "$ROOT_DIR/public/cards/${renamed}.webp"
+  magick "$f" -quality 10 "$ROOT_DIR/public/cards/10/${renamed}.webp"
+  magick "$f" -resize 64x -quality 3 "$ROOT_DIR/public/cards/3/${renamed}.webp"
 done
 
 echo "Done. $total images processed to quality 90, 10, and 3."
