@@ -40,4 +40,7 @@ styled-system
 styled-system-studio
 
 # raw card images
-/raw
+/raw/*
+!/raw/missing/
+/raw/missing/*
+!/raw/missing/.gitkeep
