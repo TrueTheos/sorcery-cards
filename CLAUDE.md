@@ -1,43 +1,131 @@
 # Sorcery Cards - Image CDN
 
-Image CDN for the Sorcery TCG, used by [spells.bar](https://spells.bar). Hosts card images converted from PNG/JPG to WebP at multiple quality levels. No card metadata lives here — only images.
+Image CDN for the Sorcery TCG, used by [spells.bar](https://spells.bar). Hosts card images converted from PNG/JPG to WebP at multiple quality levels. No card metadata lives here — only images and the generated `processed_cards.json` for the frontend.
 
 ## Project Structure
 
 ```
-public/cards/         # WebP images at quality 90 (default)
-public/cards/10/      # WebP images at quality 10 (thumbnail)
-public/cards/50/      # WebP images at quality 50 (legacy thumbnail)
-public/tokens/        # Token PNGs (source)
-public/tokens.json    # Generated token name list
-public/ManualCardFix/ # Manual card fixes
-raw/                  # Staging folder for downloaded PNGs (gitignored)
+public/cards/              # WebP images at quality 90 (default)
+public/cards/10/           # WebP images at quality 10 (thumbnail)
+public/cards/50/           # WebP images at quality 50 (legacy thumbnail)
+public/cards_api_response.json  # Raw API response (source of truth for card data)
+public/processed_cards.json     # Generated frontend card list [{name, slug, type}]
+public/tokens/             # Token PNGs (source)
+public/tokens.json         # Generated token name list
+public/ManualCardFix/      # Manual card fixes
+raw/                       # Staging folder for downloaded PNGs (gitignored)
+MISSING_IMAGES.md          # Cards in API with no images yet
 scripts/
-  compressQuality.sh        # Core ImageMagick converter (subdirectory-based)
-  compressFromRaw.sh        # Flat-file converter with renaming (raw/ workflow)
-  compressAdd{Name}.sh      # Per-expansion compression scripts (legacy)
-  compressAddTokens.sh      # Token compression
-  makeTokenNames.js         # Generates tokens.json from public/tokens/
+  compressQuality.sh       # Core ImageMagick converter (subdirectory-based)
+  compressFromRaw.sh       # Flat-file converter with renaming (raw/ workflow)
+  compressAdd{Name}.sh     # Per-expansion compression scripts (legacy)
+  compressAddTokens.sh     # Token compression
+  makeTokenNames.js        # Generates tokens.json from public/tokens/
+  processApiResponse.js    # Generates processed_cards.json from API response
+  cleanupVariants.js       # Removes redundant variant images (keeps base + _b_s only)
 find-and-fix-missing-base-root.js  # Validates/creates missing base images
 ```
 
-## Adding a New Expansion
+## Data Sources
 
-### Preferred: Flat-file workflow (compressFromRaw.sh)
+### Card API
 
-For bulk downloads where PNGs are in a flat directory with naming `{expansion}-{card_name}-{variant}.png`:
+- **Endpoint**: `https://api.sorcerytcg.com/api/cards`
+- Returns a JSON array of all cards with sets, variants, and metadata
+- Rate limited — poll intermittently, diff against previous response
+- Card images are NOT included in the API response
 
-1. Place PNGs in `raw/` at the project root
-2. Run the converter:
-   ```bash
-   cd scripts
-   ./compressFromRaw.sh
-   ```
-3. The script strips the expansion prefix, replaces hyphens with underscores, and converts to WebP at quality 90 (`public/cards/`) and quality 10 (`public/cards/10/`).
+### Card Images (Google Drive)
 
-Example: `alp-abundance-b-f.png` → `abundance_b_f.webp`
+- **Source**: [Google Drive folder](https://drive.google.com/drive/folders/17IrJkRGmIU9fDSTU2JQEU9JlFzb5liLJ?usp=sharing)
+- Image filenames follow the variant slug pattern: `{expansion}-{card_name}-{variant}.png`
+  - e.g. `got-algae_bloom-b-s.png`
+- The slug encodes set, card name, product, and finish
+- Download PNGs from the Drive folder for any new/updated expansion
 
-### Legacy: Subdirectory workflow (compressAdd{Name}.sh)
+### Support
+
+Report API issues in the [#curiosa-io Discord channel](https://discord.gg/mWFU7WK5rm).
+
+## Adding a New Expansion (Full Workflow)
+
+Follow these steps in order when a new expansion drops:
+
+### 1. Update the API response
+
+```bash
+curl -o public/cards_api_response.json https://api.sorcerytcg.com/api/cards
+```
+
+### 2. Download card images
+
+Download PNGs from the [Google Drive folder](https://drive.google.com/drive/folders/17IrJkRGmIU9fDSTU2JQEU9JlFzb5liLJ?usp=sharing) and place them in `raw/` at the project root.
+
+Files should follow flat naming: `{expansion}-{card_name}-{variant}.png`
+
+### 3. Compress images
+
+```bash
+cd scripts && ./compressFromRaw.sh
+```
+
+This strips the expansion prefix, replaces hyphens with underscores, and converts to WebP at quality 90 (`public/cards/`) and quality 10 (`public/cards/10/`).
+
+Example: `got-algae_bloom-b-s.png` → `algae_bloom_b_s.webp`
+
+Requires `magick` (ImageMagick) installed.
+
+### 4. Clean up variant images
+
+```bash
+node scripts/cleanupVariants.js          # dry-run first
+node scripts/cleanupVariants.js --delete  # actually delete
+```
+
+This removes redundant variant images and keeps only:
+- `{name}.webp` (base image — created from `_b_s` if missing)
+- `{name}_b_s.webp` (bordered standard, kept for legacy)
+
+All other variants (`_b_f`, `_bt_f`, `_d_s`, etc.) are deleted. Prints a summary with file counts and space recovered.
+
+### 5. Generate the frontend card list
+
+```bash
+node scripts/processApiResponse.js
+```
+
+Reads `public/cards_api_response.json` and writes `public/processed_cards.json`:
+- Extracts `name`, `type`, and derives base `slug` from the first variant slug
+- Slug derivation: `alp-apprentice_wizard-b-s` → strip expansion prefix → strip variant suffix → `apprentice_wizard`
+- Deduplicates by card name, sorts alphabetically
+- Output format: `[{name, slug, type}, ...]`
+
+### 6. Check for missing images
+
+```bash
+node -e "
+const fs = require('fs');
+const cards = require('./public/processed_cards.json');
+const files = new Set(fs.readdirSync('./public/cards').filter(f => f.endsWith('.webp')));
+const missing = cards.filter(c => !files.has(c.slug + '.webp') && !files.has(c.slug + '_b_s.webp'));
+if (missing.length) {
+  console.log(missing.length + ' cards missing images:');
+  missing.forEach(c => console.log('  ' + c.slug + ' (' + c.name + ')'));
+} else {
+  console.log('All cards have images.');
+}
+"
+```
+
+Update `MISSING_IMAGES.md` if any cards are missing.
+
+### 7. Clean up raw files
+
+```bash
+rm raw/*.png
+```
+
+## Legacy: Subdirectory Workflow (compressAdd{Name}.sh)
 
 For downloads organized into variant subdirectories (e.g. `b_f/`, `b_s/`):
 
@@ -62,17 +150,7 @@ done
    cd scripts && chmod +x compressAdd{Name}.sh && ./compressAdd{Name}.sh
    ```
 
-Requires `magick` (ImageMagick) installed.
-
-### 4. Fix missing base images
-
-```bash
-node find-and-fix-missing-base-root.js --create
-```
-
-This scans `public/cards/` for cards that have variant suffixes (`_b_f`, `_b_s`) but are missing a base file (no suffix). It copies `_b_s` (preferred) or `_b_f` to create the base file in `public/cards/`.
-
-Run without `--create` first to preview what would be fixed.
+Then continue from step 4 above (cleanup variants).
 
 ## Variant Suffix Reference
 
