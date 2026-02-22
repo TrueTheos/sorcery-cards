@@ -109,7 +109,8 @@ console.log(shouldDelete ? 'DELETING variant files...\n' : 'DRY RUN (use --delet
 
 const dirs = [
   path.join(__dirname, '../public/cards'),
-  path.join(__dirname, '../public/cards/10')
+  path.join(__dirname, '../public/cards/10'),
+  path.join(__dirname, '../public/cards/3')
 ];
 
 for (const dir of dirs) {

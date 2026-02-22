@@ -71,7 +71,7 @@ Files should follow flat naming: `{expansion}-{card_name}-{variant}.png`
 cd scripts && ./compressFromRaw.sh
 ```
 
-This strips the expansion prefix, replaces hyphens with underscores, and converts to WebP at quality 90 (`public/cards/`) and quality 10 (`public/cards/10/`).
+This strips the expansion prefix, replaces hyphens with underscores, and converts to WebP at three quality levels: quality 90 (`public/cards/`), quality 10 (`public/cards/10/`), and quality 3 at 64px wide (`public/cards/3/`, blur placeholder / LQIP).
 
 Example: `got-algae_bloom-b-s.png` → `algae_bloom_b_s.webp`
 
@@ -84,7 +84,7 @@ node scripts/cleanupVariants.js          # dry-run first
 node scripts/cleanupVariants.js --delete  # actually delete
 ```
 
-This removes redundant variant images and keeps only:
+This removes redundant variant images across all three quality directories (q90, q10, q3) and keeps only:
 - `{name}.webp` (base image — created from `_b_s` if missing)
 - `{name}_b_s.webp` (bordered standard, kept for legacy)
 
