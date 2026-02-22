@@ -6,6 +6,7 @@ Image CDN for the Sorcery TCG, used by [spells.bar](https://spells.bar). Hosts c
 
 ```
 public/cards/              # WebP images at quality 90 (default)
+public/cards/3/            # WebP images at quality 3, 64px wide (blur placeholder / LQIP)
 public/cards/10/           # WebP images at quality 10 (thumbnail)
 public/cards/50/           # WebP images at quality 50 (legacy thumbnail)
 public/cards_api_response.json  # Raw API response (source of truth for card data)
@@ -19,6 +20,7 @@ scripts/
   compressQuality.sh       # Core ImageMagick converter (subdirectory-based)
   compressFromRaw.sh       # Flat-file converter with renaming (raw/ workflow)
   compressAdd{Name}.sh     # Per-expansion compression scripts (legacy)
+  compressBlurPlaceholders.sh  # Generates quality-3 blur placeholders
   compressAddTokens.sh     # Token compression
   makeTokenNames.js        # Generates tokens.json from public/tokens/
   processApiResponse.js    # Generates processed_cards.json from API response
