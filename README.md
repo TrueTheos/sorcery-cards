@@ -1,5 +1,3 @@
-Primarily being used for https://spells.bar
-
 No Rights Included.
 
 # Images
